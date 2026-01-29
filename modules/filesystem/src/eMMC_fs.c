@@ -56,7 +56,7 @@ esp_err_t initialize_filesystem_sdmmc() {
     // slot_config.d2    = (gpio_num_t) -1;
     slot_config.d3 = (gpio_num_t) SDMMC_D3_PIN;
     // slot_config.d3 = (gpio_num_t) -1;
-    slot_config.width = 4;
+    slot_config.width = 1;
     slot_config.cd    = SDMMC_NO_CD;
     slot_config.wp    = SDMMC_NO_WP;
     ESP_LOGI(SDMMC_TAG, "Set GPIO.");
@@ -144,6 +144,7 @@ esp_err_t initialize_filesystem_sdmmc(void) {
 
     ESP_LOGI(TAG, "SD card mounted");
     sdmmc_card_print_info(stdout, card);
+    fs_test_sdmmc();
 
     return ESP_OK;
 }

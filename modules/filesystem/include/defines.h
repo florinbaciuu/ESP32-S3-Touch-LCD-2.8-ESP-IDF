@@ -46,8 +46,8 @@
 #define SD_MOUNT_LABEL "sdcard"
 #define SD_MOUNT_PATH "/sdcard"
 
-//#define SDMMC_SYSTEM
-#define SPISD_SYSTEM
+#define SDMMC_SYSTEM
+//#define SPISD_SYSTEM
 
 
 //-------------------------
