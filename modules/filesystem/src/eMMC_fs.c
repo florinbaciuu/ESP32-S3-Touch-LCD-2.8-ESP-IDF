@@ -17,10 +17,13 @@
 
 #include "defines.h"
 
+#include "driver/spi_common.h"
+#include "driver/spi_master.h"
+
 /**********************
  *   FILESYSTEM
  **********************/
-
+#ifdef SDMMC_SYSTEM
 static const char* SDMMC_TAG = "SDMMCFS";
 
 bool fs_test_sdmmc();  //. prototype
@@ -36,21 +39,24 @@ esp_err_t initialize_filesystem_sdmmc() {
         .disk_status_check_enable                                      = false,
         .use_one_fat                                                   = false};
 
-    const char   mount_point[]              = SD_MOUNT_PATH;
-    sdmmc_host_t host                       = SDMMC_HOST_DEF();
-    host.max_freq_khz                       = SD_FREQ_DEFAULT;  // reducere la 20 MHz
-    sdmmc_slot_config_t slot_config         = SDMMC_SLOT_CONFIG_DEF();
+    const char mount_point[]                = SD_MOUNT_PATH;
+    // sdmmc_host_t host                       = SDMMC_HOST_DEF();
+    sdmmc_host_t host = SDMMC_HOST_DEF();
+
+    host.max_freq_khz = SD_FREQ_HIGHSPEED;  // reducere la 20 MHz
+    // host.max_freq_khz                       =SDMMC_FREQ_PROBING;
+    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEF();
     ESP_LOGI(SDMMC_TAG, "Using SDMMC peripheral.");
     slot_config.clk = (gpio_num_t) SDMMC_CLK_PIN;
     slot_config.cmd = (gpio_num_t) SDMMC_CMD_PIN;
     slot_config.d0  = (gpio_num_t) SDMMC_D0_PIN;
-    slot_config.d1 =  (gpio_num_t) SDMMC_D1_PIN;
+    slot_config.d1  = (gpio_num_t) SDMMC_D1_PIN;
     // slot_config.d1    = (gpio_num_t) -1;
     slot_config.d2 = (gpio_num_t) SDMMC_D2_PIN;
     // slot_config.d2    = (gpio_num_t) -1;
     slot_config.d3 = (gpio_num_t) SDMMC_D3_PIN;
-    //slot_config.d3 = (gpio_num_t) -1;
-    slot_config.width = 1;
+    // slot_config.d3 = (gpio_num_t) -1;
+    slot_config.width = 4;
     slot_config.cd    = SDMMC_NO_CD;
     slot_config.wp    = SDMMC_NO_WP;
     ESP_LOGI(SDMMC_TAG, "Set GPIO.");
@@ -76,6 +82,73 @@ esp_err_t initialize_filesystem_sdmmc() {
     fs_test_sdmmc();
     return ESP_OK;
 }
+
+#endif
+
+#ifdef SPISD_SYSTEM
+
+static const char* TAG = "SD_SPI";
+static const char* SDMMC_TAG = "SD_SPI";
+sdmmc_card_t*      card;
+
+esp_err_t initialize_filesystem_sdmmc(void) {
+    esp_err_t ret;
+
+    ESP_LOGI(TAG, "Initializing SPI bus");
+
+    spi_bus_config_t bus_cfg = {
+        .mosi_io_num     = PIN_NUM_MOSI,
+        .miso_io_num     = PIN_NUM_MISO,
+        .sclk_io_num     = PIN_NUM_CLK,
+        .quadwp_io_num   = -1,
+        .quadhd_io_num   = -1,
+        .max_transfer_sz = 16 * 1024};
+
+    //gpio_set_pull_mode(PIN_NUM_MOSI, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(PIN_NUM_MISO, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(PIN_NUM_CS, GPIO_PULLUP_ONLY);
+
+    ret = spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "spi_bus_initialize failed");
+        return ret;
+    }
+
+    sdmmc_host_t host                       = SDSPI_HOST_DEFAULT();
+    host.slot                               = SPI2_HOST;
+    host.max_freq_khz = 20000;  // reducere la 20 MHz
+    sdspi_device_config_t slot_config       = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs                     = PIN_NUM_CS;
+    slot_config.host_id                     = SPI2_HOST;
+
+    esp_vfs_fat_mount_config_t mount_config = {
+        .format_if_mount_failed = true,
+        .max_files              = 5,
+        .allocation_unit_size   = 16 * 1024};
+
+    ESP_LOGI(TAG, "Mounting SD card via SPI");
+
+    
+
+    ret = esp_vfs_fat_sdspi_mount("/sdcard",
+        &host,
+        &slot_config,
+        &mount_config,
+        &card);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to mount SD card (%s)", esp_err_to_name(ret));
+        spi_bus_free(SPI2_HOST);
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "SD card mounted");
+    sdmmc_card_print_info(stdout, card);
+
+    return ESP_OK;
+}
+
+#endif
 
 // --------------------------------------- //
 
