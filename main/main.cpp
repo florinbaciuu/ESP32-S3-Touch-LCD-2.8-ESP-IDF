@@ -58,7 +58,7 @@ extern "C" {
   * The application will run indefinitely until the device is powered off or reset.
 */
 extern "C" void app_main(void) {
-    esp_log_level_set("*", ESP_LOG_ERROR);  //
+    esp_log_level_set("*", ESP_LOG_INFO);  //
     printf("Starting application!\n");
     ESP_LOGI("APP_MAIN", "Hello world!\n");
     printf("Hello world!\n");
@@ -78,6 +78,6 @@ extern "C" void app_main(void) {
     init_filesystem_sys();
 
     vTaskDelay(pdMS_TO_TICKS(150));
-    fflush(stdout);
+    //fflush(stdout);
     printf("Closing application!\n");
 }
